@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>金門盛夏漫遊 - 雲端同步分帳版</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     
+    <!-- 使用 Firebase 舊版相容 SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
@@ -36,6 +40,7 @@
 </head>
 <body class="pb-36 text-gray-700 antialiased max-w-md mx-auto bg-slate-50 relative min-h-screen shadow-2xl">
 
+    <!-- Top Sticky Header -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 px-5 py-4 flex items-center justify-between">
         <div class="flex items-center gap-2">
             <div class="w-10 h-10 bg-fuji-blue rounded-full flex items-center justify-center text-white text-lg shadow-md shadow-blue-200">
@@ -46,17 +51,17 @@
                 <p class="text-xs text-gray-400">🔥 雲端即時資料庫同步中</p>
             </div>
         </div>
-        <span id="cloud-status" class="bg-amber-50 text-amber-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-200 animate-pulse">
-            <i class="fa-solid fa-cloud mr-1"></i>連線中...
+        <span id="cloud-status" class="bg-amber-50 text-amber-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-200">
+            <i class="fa-solid fa-cloud mr-1"></i>載入本地快取...
         </span>
     </header>
 
+    <!-- Main Content Container -->
     <main class="px-4 pt-4 space-y-10" id="itinerary-container">
-        <div class="text-center py-10 text-gray-400 text-sm">
-            <i class="fa-solid fa-circle-notch animate-spin mr-2"></i>載入雲端行程中...
-        </div>
+        <!-- 這裡會第一時間由本地快取渲染，絕不卡住 -->
     </main>
 
+    <!-- Floating Action: Budget Button -->
     <div class="fixed bottom-24 right-6 z-40">
         <button onclick="openBudgetModal()" class="w-14 h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full flex flex-col items-center justify-center shadow-lg shadow-amber-600/30 border-2 border-white">
             <i class="fa-solid fa-coins text-lg"></i>
@@ -64,6 +69,7 @@
         </button>
     </div>
 
+    <!-- Floating Bottom Navigation -->
     <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/90 backdrop-blur-md px-6 py-3 rounded-full shadow-xl shadow-blue-950/10 border border-gray-100/80 flex items-center gap-8 w-[90%] max-w-sm justify-around">
         <a href="#day1" class="flex flex-col items-center gap-1 group">
             <div class="w-8 h-8 rounded-full bg-blue-50 text-[#3B7AAE] group-hover:bg-[#3B7AAE] group-hover:text-white transition-all flex items-center justify-center text-sm shadow-sm font-bold">1</div>
@@ -79,6 +85,7 @@
         </a>
     </nav>
 
+    <!-- 行程編輯視窗 -->
     <div id="edit-modal" class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 opacity-0 pointer-events-none modal-animate">
         <div class="bg-white w-full max-w-md rounded-t-[32px] p-6 space-y-4 shadow-2xl transform translate-y-full modal-animate">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3">
@@ -106,10 +113,12 @@
         </div>
     </div>
 
+    <!-- 記帳大面板 -->
     <div id="budget-modal" class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 opacity-0 pointer-events-none modal-animate">
         <div class="bg-white w-full max-w-md rounded-t-[32px] p-6 space-y-4 shadow-2xl transform translate-y-full modal-animate flex flex-col max-h-[85vh]">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3"><div class="flex items-center gap-2"><div class="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs"><i class="fa-solid fa-wallet"></i></div><h3 class="text-lg font-bold text-gray-800">金門隨身雲端分帳</h3></div><button onclick="closeModal('budget-modal')" class="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center text-gray-400"><i class="fa-solid fa-xmark"></i></button></div>
             <div class="overflow-y-auto flex-1 space-y-4 pr-1 text-sm no-scrollbar">
+                <!-- 新增開支 -->
                 <div class="bg-slate-50 p-4 rounded-2xl border border-gray-100 space-y-3">
                     <span class="text-xs font-bold text-amber-600 uppercase tracking-wider block"><i class="fa-solid fa-plus-circle mr-1"></i>動態新增消費</span>
                     <div class="grid grid-cols-2 gap-2">
@@ -120,10 +129,12 @@
                     <div><label class="block text-[11px] font-bold text-gray-400 mb-1">👥 誰一起分攤？</label><div class="grid grid-cols-4 gap-1.5" id="sharer-checkbox-group"></div></div>
                     <button onclick="addExpenseRecord()" class="w-full bg-amber-500 text-white font-bold py-2 rounded-xl text-xs shadow-sm">上傳雲端記帳</button>
                 </div>
+                <!-- 列表 -->
                 <div class="space-y-2">
                     <h4 class="font-bold text-gray-700 text-xs flex justify-between items-center"><span>📋 雲端即時明細</span><span id="total-amount-display" class="text-amber-600">總計: $0</span></h4>
                     <div id="expense-list-container" class="space-y-1.5 max-h-[22vh] overflow-y-auto"></div>
                 </div>
+                <!-- 還款方案 -->
                 <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-2">
                     <div class="flex justify-between items-center"><h4 class="font-bold text-[#3B7AAE] text-xs"><i class="fa-solid fa-diagram-project mr-1"></i>最優智能分帳報告</h4></div>
                     <div id="settlement-results" class="text-xs text-gray-600 bg-white p-3 rounded-xl border border-blue-100/40 min-h-[50px] space-y-1">試算中...</div>
@@ -133,8 +144,8 @@
         </div>
     </div>
 
+    <!-- 控制邏輯 -->
     <script>
-        // 初始化配置
         const firebaseConfig = {
             apiKey: "AIzaSyB8PlHfYL57GVHwmy97Y62d6AkYERlI97U",
             authDomain: "leoooo-6fb13.firebaseapp.com",
@@ -145,18 +156,15 @@
             measurementId: "G-S3CHEGQPV4"
         };
 
-        // 啟動 Firebase 實例
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 系統變數
         const members = ["李承恩", "林逸程", "宋美妹", "匡顯吉"];
-        let travelData = [];
         let expenses = [];
         let globalSettlementText = "";
 
-        // 行程初始化預設範本資料
-        const defaultTravelData = [
+        // 本地優先：預設行程資料
+        let travelData = [
             {
                 day: "Day 01", date: "06/27 (六)", theme: "跨海尋幽 • 戰地前線小金門", icon: "fa-ship",
                 clothing: "👗 透氣防曬衣物、遮陽帽、好走的球鞋（海邊木棧道與坑道階梯多）。",
@@ -204,31 +212,42 @@
         ];
 
         const infoStatus = document.getElementById('cloud-status');
-        
-        // 監聽雲端行程
-        db.ref('kinmen_trip/itinerary').on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                travelData = snapshot.val();
-            } else {
-                travelData = defaultTravelData;
-                db.ref('kinmen_trip/itinerary').set(defaultTravelData);
-            }
+
+        // 核心修正：網頁開啟時，不等 Firebase，直接暴力秒讀本地畫面
+        window.addEventListener('DOMContentLoaded', () => {
             renderItinerary();
-            infoStatus.innerHTML = `<i class="fa-solid fa-cloud-arrow-up mr-1"></i>雲端已同步`;
-            infoStatus.className = "bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200";
+            connectFirebase();
         });
 
-        // 監聽雲端開支
-        db.ref('kinmen_trip/expenses').on('value', (snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                expenses = Object.keys(data).map(key => data[key]);
-            } else {
-                expenses = [];
-            }
-            renderExpenseList();
-            calculateSettlement();
-        });
+        function connectFirebase() {
+            // 監聽雲端行程 (如果有資料就覆蓋本地，沒資料就同步本地上去)
+            db.ref('kinmen_trip/itinerary').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    travelData = snapshot.val();
+                    renderItinerary();
+                } else {
+                    // 雲端是空的，把預設資料存上去
+                    db.ref('kinmen_trip/itinerary').set(travelData);
+                }
+                infoStatus.innerHTML = `<i class="fa-solid fa-cloud-arrow-up mr-1"></i>雲端已同步`;
+                infoStatus.className = "bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200 animate-none";
+            }, (error) => {
+                // 如果本地 file:// 寫入受阻，依然維持運作
+                infoStatus.innerHTML = `<i class="fa-solid fa-cloud text-amber-600 mr-1"></i>唯讀/本地模式`;
+            });
+
+            // 監聽雲端開支
+            db.ref('kinmen_trip/expenses').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    expenses = Object.keys(data).map(key => data[key]);
+                } else {
+                    expenses = [];
+                }
+                renderExpenseList();
+                calculateSettlement();
+            });
+        }
 
         function renderItinerary() {
             const container = document.getElementById('itinerary-container');
@@ -294,11 +313,12 @@
             travelData[dayIdx].items[itemIdx].tip = document.getElementById('input-tip').value;
             travelData[dayIdx].items[itemIdx].info = document.getElementById('input-info').value;
             
-            db.ref('kinmen_trip/itinerary').set(travelData);
+            renderItinerary(); // 本地先畫
+            db.ref('kinmen_trip/itinerary').set(travelData).catch(()=>{}); // 嘗試同步
             closeModal('edit-modal');
         }
 
-        // 記帳與分帳功能
+        // 記帳分帳控制
         function openBudgetModal() {
             setupBudgetModalForm();
             renderExpenseList();
@@ -333,7 +353,13 @@
             const id = "exp_" + Date.now();
             const newRecord = { id, purpose, amount, payer, sharers };
             
-            db.ref('kinmen_trip/expenses/' + id).set(newRecord);
+            // 本地預模擬更新
+            expenses.push(newRecord);
+            renderExpenseList();
+            calculateSettlement();
+
+            // 同步雲端
+            db.ref('kinmen_trip/expenses/' + id).set(newRecord).catch(()=>{});
             pInput.value = ""; aInput.value = "";
         }
 
@@ -341,7 +367,7 @@
             const container = document.getElementById('expense-list-container');
             let html = ""; let total = 0;
             if (expenses.length === 0) {
-                container.innerHTML = `<div class="text-center text-xs text-gray-400 py-4">暫無雲端消費明細。</div>`;
+                container.innerHTML = `<div class="text-center text-xs text-gray-400 py-4">暫無消費明細。</div>`;
                 document.getElementById('total-amount-display').innerText = `總計: $0`;
                 return;
             }
@@ -364,7 +390,10 @@
         }
 
         function deleteExpenseRecord(id) {
-            db.ref('kinmen_trip/expenses/' + id).set(null);
+            expenses = expenses.filter(e => e.id !== id);
+            renderExpenseList();
+            calculateSettlement();
+            db.ref('kinmen_trip/expenses/' + id).set(null).catch(()=>{});
         }
 
         function calculateSettlement() {
@@ -398,13 +427,13 @@
             }
 
             if (transferProtocols.length === 0) {
-                resultsDiv.innerHTML = `<span class="text-gray-400">目前雲端帳務平衡。</span>`;
+                resultsDiv.innerHTML = `<span class="text-gray-400">目前帳務平衡。</span>`;
                 globalSettlementText = "📣 金門漫遊分帳報告：目前帳務平衡，互不相欠！";
                 return;
             }
 
             let html = "";
-            let lineText = "🗺️【金門離島漫遊 雲端即時分帳通知】\n───────────────────\n";
+            let lineText = "🗺️【金門離島漫遊 即時分帳通知】\n───────────────────\n";
             transferProtocols.forEach(p => {
                 html += `<div class="flex items-center justify-between py-1 border-b border-dashed border-gray-100 last:border-0"><span>👤 <strong class="text-red-500">${p.from}</strong> 應轉帳給 <strong>${p.to}</strong></span><span class="font-bold text-[#3B7AAE]">$${p.value} 元</span></div>`;
                 lineText += ` 💸【${p.from}】 ➡️ 給 【${p.to}】 💲$${p.value} 元\n`;
@@ -416,7 +445,7 @@
 
         function copyToLineClipboard() {
             navigator.clipboard.writeText(globalSettlementText).then(() => {
-                alert("✨ 雲端結算報告已複製！快貼到 LINE 群組通知旅伴吧！");
+                alert("✨ 結算報告已成功複製！快貼到 LINE 群組通知旅伴吧！");
             });
         }
 
