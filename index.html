@@ -3,15 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>金門盛夏漫遊 - 可編輯客製化行程表</title>
-    <!-- Tailwind CSS -->
+    <title>金門盛夏漫遊 - 雲端同步分帳版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
@@ -27,15 +28,14 @@
             box-shadow: 0 8px 24px rgba(59, 122, 174, 0.06);
             border: 1px solid rgba(59, 122, 174, 0.1);
         }
-        /* 彈出視窗動畫 */
         .modal-animate {
-            transition: opacity 0.25s ease, transform 0.25s ease;
+            transition: opacity 0.2s ease, transform 0.2s ease;
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="pb-32 text-gray-700 antialiased max-w-md mx-auto bg-slate-50 relative min-h-screen shadow-2xl">
+<body class="pb-36 text-gray-700 antialiased max-w-md mx-auto bg-slate-50 relative min-h-screen shadow-2xl">
 
-    <!-- Top Sticky Header -->
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 px-5 py-4 flex items-center justify-between">
         <div class="flex items-center gap-2">
             <div class="w-10 h-10 bg-fuji-blue rounded-full flex items-center justify-center text-white text-lg shadow-md shadow-blue-200">
@@ -43,20 +43,27 @@
             </div>
             <div>
                 <h1 class="text-base font-bold text-gray-800">金門離島私房漫遊</h1>
-                <p class="text-xs text-gray-400">隨時編輯 • 即時同步更新</p>
+                <p class="text-xs text-gray-400">🔥 雲端即時資料庫同步中</p>
             </div>
         </div>
-        <span class="bg-blue-50 text-[#3B7AAE] text-xs font-bold px-3 py-1.5 rounded-full border border-blue-100">
-            <i class="fa-solid fa-sliders mr-1"></i>動態規劃版
+        <span id="cloud-status" class="bg-amber-50 text-amber-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-200 animate-pulse">
+            <i class="fa-solid fa-cloud mr-1"></i>連線中...
         </span>
     </header>
 
-    <!-- Main Content Container -->
     <main class="px-4 pt-4 space-y-10" id="itinerary-container">
-        <!-- 這裡會透過 JS 動態渲染行程 -->
+        <div class="text-center py-10 text-gray-400 text-sm">
+            <i class="fa-solid fa-circle-notch animate-spin mr-2"></i>載入雲端行程中...
+        </div>
     </main>
 
-    <!-- Floating Bottom Navigation -->
+    <div class="fixed bottom-24 right-6 z-40">
+        <button onclick="openBudgetModal()" class="w-14 h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full flex flex-col items-center justify-center shadow-lg shadow-amber-600/30 border-2 border-white">
+            <i class="fa-solid fa-coins text-lg"></i>
+            <span class="text-[9px] font-bold">記帳</span>
+        </button>
+    </div>
+
     <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/90 backdrop-blur-md px-6 py-3 rounded-full shadow-xl shadow-blue-950/10 border border-gray-100/80 flex items-center gap-8 w-[90%] max-w-sm justify-around">
         <a href="#day1" class="flex flex-col items-center gap-1 group">
             <div class="w-8 h-8 rounded-full bg-blue-50 text-[#3B7AAE] group-hover:bg-[#3B7AAE] group-hover:text-white transition-all flex items-center justify-center text-sm shadow-sm font-bold">1</div>
@@ -72,254 +79,358 @@
         </a>
     </nav>
 
-    <!-- 韓式風格行程編輯彈出視窗 (Modal) -->
     <div id="edit-modal" class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 opacity-0 pointer-events-none modal-animate">
         <div class="bg-white w-full max-w-md rounded-t-[32px] p-6 space-y-4 shadow-2xl transform translate-y-full modal-animate">
             <div class="flex justify-between items-center border-b border-gray-100 pb-3">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-5 bg-fuji-blue rounded-full block"></span>
-                    <h3 class="text-lg font-bold text-gray-800">修改行程資訊</h3>
+                    <h3 class="text-lg font-bold text-gray-800">修改行程資訊 (同步雲端)</h3>
                 </div>
-                <button onclick="closeModal()" class="w-8 h-8 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                <button onclick="closeModal('edit-modal')" class="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center text-gray-400">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            
-            <!-- 隱藏的索引標記 -->
             <input type="hidden" id="edit-day-idx">
             <input type="hidden" id="edit-item-idx">
-
-            <div class="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-1">
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">時間 / 標籤狀態</label>
-                    <input type="text" id="input-time" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#3B7AAE]">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">景點 / 店家名稱</label>
-                    <input type="text" id="input-title" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#3B7AAE]">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">精簡摘要描述</label>
-                    <textarea id="input-desc" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#3B7AAE]"></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">💡 拍照小技巧</label>
-                    <textarea id="input-tip" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#3B7AAE]"></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 mb-1">🚗 停車＆加油交通資訊</label>
-                    <textarea id="input-info" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-[#3B7AAE]"></textarea>
-                </div>
+            <div class="space-y-3 text-sm max-h-[50vh] overflow-y-auto">
+                <div><label class="block text-xs font-bold text-gray-400 mb-1">時間狀態</label><input type="text" id="input-time" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"></div>
+                <div><label class="block text-xs font-bold text-gray-400 mb-1">景點/店家名稱</label><input type="text" id="input-title" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"></div>
+                <div><label class="block text-xs font-bold text-gray-400 mb-1">摘要描述</label><textarea id="input-desc" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"></textarea></div>
+                <div><label class="block text-xs font-bold text-gray-400 mb-1">💡 拍照小技巧</label><textarea id="input-tip" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"></textarea></div>
+                <div><label class="block text-xs font-bold text-gray-400 mb-1">🚗 停車資訊</label><textarea id="input-info" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2"></textarea></div>
             </div>
-
             <div class="pt-2 flex gap-3">
-                <button onclick="closeModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-xl transition-all">取消</button>
-                <button onclick="saveItineraryChanges()" class="flex-1 bg-fuji-blue hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-blue-200">儲存更新</button>
+                <button onclick="closeModal('edit-modal')" class="flex-1 bg-gray-100 text-gray-600 font-bold py-3 rounded-xl">取消</button>
+                <button onclick="saveItineraryChanges()" class="flex-1 bg-fuji-blue text-white font-bold py-3 rounded-xl shadow-md">串聯儲存</button>
             </div>
         </div>
     </div>
 
-    <!-- JS 邏輯區 -->
+    <div id="budget-modal" class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 opacity-0 pointer-events-none modal-animate">
+        <div class="bg-white w-full max-w-md rounded-t-[32px] p-6 space-y-4 shadow-2xl transform translate-y-full modal-animate flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3"><div class="flex items-center gap-2"><div class="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs"><i class="fa-solid fa-wallet"></i></div><h3 class="text-lg font-bold text-gray-800">金門隨身雲端分帳</h3></div><button onclick="closeModal('budget-modal')" class="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center text-gray-400"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="overflow-y-auto flex-1 space-y-4 pr-1 text-sm no-scrollbar">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-gray-100 space-y-3">
+                    <span class="text-xs font-bold text-amber-600 uppercase tracking-wider block"><i class="fa-solid fa-plus-circle mr-1"></i>動態新增消費</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="expense-purpose" placeholder="項目（如：膩咖啡下午茶）" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs">
+                        <input type="number" id="expense-amount" placeholder="金額" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs">
+                    </div>
+                    <div><label class="block text-[11px] font-bold text-gray-400 mb-1">👤 誰負責墊錢？</label><div class="grid grid-cols-4 gap-1.5" id="payer-radio-group"></div></div>
+                    <div><label class="block text-[11px] font-bold text-gray-400 mb-1">👥 誰一起分攤？</label><div class="grid grid-cols-4 gap-1.5" id="sharer-checkbox-group"></div></div>
+                    <button onclick="addExpenseRecord()" class="w-full bg-amber-500 text-white font-bold py-2 rounded-xl text-xs shadow-sm">上傳雲端記帳</button>
+                </div>
+                <div class="space-y-2">
+                    <h4 class="font-bold text-gray-700 text-xs flex justify-between items-center"><span>📋 雲端即時明細</span><span id="total-amount-display" class="text-amber-600">總計: $0</span></h4>
+                    <div id="expense-list-container" class="space-y-1.5 max-h-[22vh] overflow-y-auto"></div>
+                </div>
+                <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-2">
+                    <div class="flex justify-between items-center"><h4 class="font-bold text-[#3B7AAE] text-xs"><i class="fa-solid fa-diagram-project mr-1"></i>最優智能分帳報告</h4></div>
+                    <div id="settlement-results" class="text-xs text-gray-600 bg-white p-3 rounded-xl border border-blue-100/40 min-h-[50px] space-y-1">試算中...</div>
+                </div>
+            </div>
+            <div class="pt-2"><button onclick="copyToLineClipboard()" class="w-full bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-sm flex items-center justify-center gap-2 shadow-md"><i class="fa-solid fa-copy"></i><span>複製分帳結果通知至 LINE</span></button></div>
+        </div>
+    </div>
+
     <script>
-        // 完整的原始行程資料集
-        let travelData = [
+        // 初始化配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyB8PlHfYL57GVHwmy97Y62d6AkYERlI97U",
+            authDomain: "leoooo-6fb13.firebaseapp.com",
+            projectId: "leoooo-6fb13",
+            storageBucket: "leoooo-6fb13.firebasestorage.app",
+            messagingSenderId: "571621895671",
+            appId: "1:571621895671:web:948223543f393eef4792f2",
+            measurementId: "G-S3CHEGQPV4"
+        };
+
+        // 啟動 Firebase 實例
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 系統變數
+        const members = ["李承恩", "林逸程", "宋美妹", "匡顯吉"];
+        let travelData = [];
+        let expenses = [];
+        let globalSettlementText = "";
+
+        // 行程初始化預設範本資料
+        const defaultTravelData = [
             {
-                day: "Day 01",
-                date: "06/27 (六)",
-                theme: "跨海尋幽 • 戰地前線小金門",
-                icon: "fa-ship",
+                day: "Day 01", date: "06/27 (六)", theme: "跨海尋幽 • 戰地前線小金門", icon: "fa-ship",
                 clothing: "👗 透氣防曬衣物、遮陽帽、好走的球鞋（海邊木棧道與坑道階梯多）。",
                 weather: "☀️ 初夏金門紫外線強烈，海風稍大，需定時補擦防曬乳並攜帶薄外套防風。",
                 items: [
-                    { type: "交通", tag: "#必拍", tagColor: "amber", typeColor: "blue", time: "07:50", title: "立榮航空 B7-8955", desc: "台中清泉崗 (RMQ) 07:50 → 金門尚義 (KNH) 08:55", tip: "起飛後選擇左側靠窗座位，天氣好時可俯瞰澎湖群島與金門群島的蔚藍海岸線！", info: "請提早1小時抵達台中機場辦理登機。抵達金門後，建議在尚義機場直接取車。" },
-                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "11:30", title: "喬安牧場餐飲", desc: "金門在地高粱牛肉饗宴，鮮甜豐盛", tip: "澎湃的鮮燙高粱牛肉麵上桌時，淋下熱湯肉片瞬間變粉嫩的瞬間，錄影畫面最吸睛！", info: "餐廳附設專屬寬敞停車場，開車前來非常便利。" },
-                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "下午", title: "烈嶼鄉 (小金門) 探秘", desc: "走訪金門大橋、湖井頭戰史館、沙溪堡觀海哨所、九宮花崗岩雙門型坑道群。", tip: "沙溪堡的延伸木棧道是絕佳網美點，建議用低角度往上拍；九宮坑道內可利用水面波光倒影拍出迷幻鏡面感。", info: "各景點皆有免費公有停車場。小金門唯一的加油站位於烈嶼九井路上，營業至18:00。" },
-                    { type: "活動", tag: "#必拍", tagColor: "purple", typeColor: "orange", time: "15:30", title: "膩咖啡", desc: "隱密老宅充滿綠意植栽的靜謐下午茶空間。", tip: "老宅門口的復古招牌與垂墜綠色植物是招牌場景，拍出靜謐日系/韓系文青感。", info: "位於巷弄內，汽車請勿駛入。請將車輛停放在附近大馬路旁步行進入。" },
-                    { type: "晚餐", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "18:00", title: "喜豐樓", desc: "道地金門手路菜、傳統筵席宴會古早味料理。", tip: "金門傳統燕菜、芋頭排骨等招牌菜色份量十足，建議從餐桌正上方拍一張熱氣騰騰的團圓大合照。", info: "餐廳周邊道路可臨停，或至路口尋找空曠處停車。" },
-                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "晚上", title: "水頭聚落 (得月樓、金水國小)", desc: "夜幕低垂下的絕美閩南大厝與高聳防禦洋樓群。", tip: "得月樓槍樓在夜間會點亮昏黃燈光，使用手機「夜景模式」站於中庭仰拍，能展現洋樓極具張力的立體線條。", info: "水頭聚落入口處設有大型免費公共停車場，停好車後步行入內僅需3分鐘。" },
-                    { type: "宵夜", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "21:30", title: "金城飯店", desc: "在地夜貓子最愛的傳統點心與小吃聚落。", tip: "拍攝熱氣騰騰的宵夜點心，雙手端著食物與復古小店招牌合影，超有台灣街頭煙火氣息。", info: "位於金城鎮鬧區，深夜路邊車位較好找，亦可停至金城鎮公所後方停車場。" },
-                    { type: "酒店", tag: "#舒適", tagColor: "amber", typeColor: "amber", time: "住宿", title: "海福商務旅館", desc: "金門縣金城鎮民權路85號，便利度極高", tip: "大廳明亮大方，可與戰利品一同在沙發區合照留下紀念。", info: "旅館門口有臨時停車格，亦可詢問櫃檯周邊特約特車場指引。" }
+                    { type: "交通", tag: "#必拍", tagColor: "amber", typeColor: "blue", time: "07:50", title: "立榮航空 B7-8955", desc: "台中清泉崗 (RMQ) 07:50 → 金門尚義 (KNH) 08:55", tip: "起飛後選擇左側靠窗座位，天氣好時可俯瞰澎湖群島線！", info: "請提早1小時抵達台中機場辦理登機。" },
+                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "11:30", title: "喬安牧場餐飲", desc: "金門在地高粱牛肉饗宴，鮮甜豐盛", tip: "鮮燙高粱牛肉麵上桌時淋下熱湯肉片變粉嫩的瞬間錄影最吸睛！", info: "餐廳附設專屬寬敞停車場。" },
+                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "下午", title: "烈嶼鄉 (小金門) 探秘", desc: "走訪金門大橋、湖井頭戰史館、沙溪堡觀海哨所、九宮坑道群。", tip: "沙溪堡的延伸木棧道是絕佳網美點，建議用低角度往上拍技術。", info: "各景點皆有免費公有停車場。小金門唯一加油站在九井路。" },
+                    { type: "活動", tag: "#必拍", tagColor: "purple", typeColor: "orange", time: "15:30", title: "膩咖啡", desc: "隱密老宅充滿綠意植栽的靜謐下午茶空間。", tip: "老宅門口的復古招牌與垂墜綠色植物拍出文青感。", info: "位於巷弄內，汽車請停在附近大馬路旁再步行進入。" },
+                    { type: "晚餐", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "18:00", title: "喜豐樓", desc: "道地金門手路菜、傳統筵席宴會古早味料理。", tip: "傳統燕菜、芋頭排骨份量十足，由正上方拍一張大合照。", info: "餐廳周邊道路可臨停。" },
+                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "晚上", title: "水頭聚落 (得月樓)", desc: "夜幕低垂下的絕美閩南大厝與高聳防禦洋樓群。", tip: "得月樓夜間會點亮昏黃燈光，使用手機「夜景模式」仰拍線條超讚。", info: "水頭聚落入口處設有大型免費公共停車場。" },
+                    { type: "宵夜", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "21:30", title: "金城飯店", desc: "在地夜貓子最愛的傳統點心與小吃聚落。", tip: "雙手端著食物與復古小店招牌合影，充滿煙火氣。", info: "金城鎮鬧區深夜路邊車位較好找。" },
+                    { type: "酒店", tag: "#舒適", tagColor: "amber", typeColor: "amber", time: "住宿", title: "海福商務旅館", desc: "金門縣金城鎮民權路85號", tip: "大廳明亮大方，可以跟戰利品大合照。", info: "旅館門口有臨時停車格。" }
                 ]
             },
             {
-                day: "Day 02",
-                date: "06/28 (日)",
-                theme: "古寧硝煙 • 悠遊後浦歷史小鎮",
-                icon: "fa-building-columns",
-                clothing: "👗 洋裝或文青休閒服搭配亮色系配件（與紅磚、坑道花崗岩形成視覺反差）。坑道內微涼，記得帶薄外套。",
-                weather: "☀️ 白日炎熱、紫外線超強，午後常有熱對流。夜間戶外小鎮步行舒適，但廟口熱炒防蚊措施必備。",
+                day: "Day 02", date: "06/28 (日)", theme: "古寧硝煙 • 悠遊後浦歷史小鎮", icon: "fa-building-columns",
+                clothing: "👗 洋裝或文青休閒服。坑道內微涼，記得帶薄外套。",
+                weather: "☀️ 白日炎熱、紫外線超強。夜間戶外小鎮步行舒適，防蚊措施必備。",
                 items: [
-                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "早上", title: "永春廣東粥", desc: "金門在地人靈魂早餐「無米粥」配香酥長油條。", tip: "單手拿起金門特色香酥油條，斜斜地沾入熱騰騰的無米廣東粥中，利用自然光拍下特寫，令人垂涎欲滴！", info: "開車可停放至附近的「金門鎮總兵署」後方收費停車場再步行過來。" },
-                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "上午", title: "翟山坑道", desc: "最壯觀的花崗岩水上戰備坑道，聆聽震撼人心的大自然海濤交響樂。", tip: "坑道內部水面平靜如鏡，完美的「天空之鏡」倒影是精華！站在步道轉角處，利用岩壁與燈光延伸線拍出縱深大片。", info: "景區前方規劃有非常完善且免費的大型客車、小轎車及機車停車場。" },
-                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "11:30", title: "喜悅小館", desc: "精緻閩粵熱炒與金門在地澎湃海鮮中餐廳。", tip: "招牌宮保雞丁或清蒸鮮魚熱氣蒸騰，上菜時使用手機近焦模式，對準菜餚局部捕捉油亮光澤。", info: "店門口周邊可尋找白線格位停車，或停至附近公共機關外停車區。" },
-                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "下午", title: "北山聚落 & 古寧頭戰史館", desc: "拜訪彈孔累累的北山洋樓，與展示「金門之熊」戰車的戰史大廳。", tip: "與北山洋樓彈孔牆合影時，人可以站在畫面1/3處侧身凝望，黑白或高對比濾鏡更能帶出歷史滄桑感。", info: "古寧頭戰史館有寬廣停車場；北山洋樓前廣場狹窄，建議將車輛停在聚落外圍的大型停車區。" },
-                    { type: "活動", tag: "#必拍", tagColor: "purple", typeColor: "orange", time: "15:30", title: "百花洋樓喫茶", desc: "在百年老洋樓內品茗、喝濃郁咖啡，享受慢活午後時光。", tip: "挑選窗邊座位，利用透過洋樓雕花窗櫺灑落的格紋光影，拍攝茶杯或人像，帶有濃厚中西合璧復古情調。", info: "洋樓周邊街廓較窄，可將車輛停在水頭或鄰近的大馬路開闊處再漫步走過來。" },
-                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "18:00", title: "記憶海鮮餐廳", desc: "在地肥美海鮮、野生石斑、香辣高粱嗆蟹名店。", tip: "若有挑戰金門名菜「高粱嗆蟹」，夾起一塊飽滿晶瑩的蟹肉對著光線拍，通透感十足，視覺效果震撼！", info: "餐廳附近有路邊臨時停車空間，晚餐尖峰時間建議提早抵達尋找車位。" },
-                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "晚上", title: "夜遊後浦小鎮", desc: "漫步夜訪總兵署、邱良功母代步坊與紅磚拱廊模範街。", tip: "模範街紅磚拱廊在夜間亮起紅燈籠時極美，用超廣角模式由下往上拍，拍出連續拱門的對稱延伸感與熱鬧古風。", info: "建議直接將車停放在「金城北堤大型免費停車場」，步行進入後浦鬧區各景點都很方便。" },
-                    { type: "宵夜", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "深夜", title: "大廟口熱炒", desc: "在熱鬧廟埕廣場下大口吃炒沙蟲、喝高粱的暢快夜生活體驗。", tip: "戶外露天紅色大圓桌配上後方廟宇的燈光，杯盤交錯間極具台式大排檔靈魂，非常適合拍動態乾杯短影片！", info: "緊鄰城隍廟，周邊夜間巷弄狹窄，建議維持停在北堤停車場，步行前來吃宵夜。" },
-                    { type: "酒店", tag: "#續住", tagColor: "amber", typeColor: "amber", time: "住宿", title: "海福商務旅館", desc: "續住同館，免除每天打包行李搬運的奔波辛勞。", tip: "回房前可在附近便利商店買瓶金門限定風味飲品回房小酌。", info: "維持原停放車位即可。" }
+                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "早上", title: "永春廣東粥", desc: "金門在地人靈魂早餐「無米粥」配香酥長油條。", tip: "油條沾入熱騰騰的無米廣東粥中，利用自然光拍下特寫！", info: "開車可停放至「總兵署」後方收費停車場。" },
+                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "上午", title: "翟山坑道", desc: "最壯觀的花崗岩水上戰備坑道。", tip: "內部水面平靜如鏡，「天空之鏡」倒影利用岩壁延伸線拍大片。", info: "景區前方規劃有完善且免費的大型停車場。" },
+                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "11:30", title: "喜悅小館", desc: "精緻閩粵熱炒與金門在地海鮮中餐廳。", tip: "招牌宮保雞丁使用近焦模式，捕捉醬汁油亮光澤。", info: "店門口周邊可尋找白線格位停車。" },
+                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "下午", title: "北山聚落 & 古寧頭戰史館", desc: "拜訪彈孔累累的北山洋樓，與「金門之熊」戰車。", tip: "與北山洋樓彈孔牆合影，高對比濾鏡更能帶出歷史滄桑感。", info: "戰史館有寬廣停車場；北山洋樓建議停在外圍。" },
+                    { type: "活動", tag: "#必拍", tagColor: "purple", typeColor: "orange", time: "15:30", title: "百花洋樓喫茶", desc: "在百年老洋樓內品茗享受慢活午後。", tip: "挑選窗邊座位，利用透過洋樓雕花窗櫺灑落的光影拍茶杯特寫。", info: "可將車輛停在鄰近大馬路開闊處再漫步走過來。" },
+                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "18:00", title: "記憶海鮮餐廳", desc: "在地海鮮、高粱嗆蟹名店。", tip: "夾起一塊飽滿晶瑩的高粱嗆蟹蟹肉對著光線拍，通透感十足！", info: "餐廳附近有路邊臨時停車空間。" },
+                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "晚上", title: "夜遊後浦小鎮", desc: "導覽總兵署、邱良功母代步坊與模範街。", tip: "模範街紅磚拱廊夜間亮起紅燈籠，用超廣角由下往上拍延伸感。", info: "建議直接將車停放在「金城北堤大型免費停車場」。" },
+                    { type: "宵夜", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "深夜", title: "大廟口熱炒", desc: "在熱鬧廟埕廣場下吃炒沙蟲配高粱。", tip: "戶外露天紅色大圓桌配廟宇燈光，適合拍動態乾杯短影片！", info: "建議維持停在北堤停車場，步行前來。" },
+                    { type: "酒店", tag: "#續住", tagColor: "amber", typeColor: "amber", time: "住宿", title: "海福商務旅館", desc: "續住同館，免除打包搬運行李的奔波。", tip: "回房前可在便利商店買瓶金門限定高粱風味飲。", info: "維持原停放車位。" }
                 ]
             },
             {
-                day: "Day 03",
-                date: "06/29 (一)",
-                theme: "烽火砲陣 • 沙美台版摩洛哥",
-                icon: "fa-camera-retro",
-                clothing: "👗 強烈推薦穿純白色或米色系的輕便上衣或長裙。在沙美摩洛哥的黃土頹屋前，能拍出對比強烈的時尚視覺大片。",
-                weather: "☀️ 沙美地區及海邊遮蔽物較少，下午體感溫度較高，務必多補充水分防止中暑，並預留收拾伴手禮的時間。",
+                day: "Day 03", date: "06/29 (一)", theme: "烽火砲陣 • 沙美台版摩洛哥", icon: "fa-camera-retro",
+                clothing: "👗 強烈推薦穿純白色或米色系長裙。黃土頹屋前對比強烈！",
+                weather: "☀️ 沙美遮蔽少下午熱，務必多補充水分，並預留收拾伴手禮時間。",
                 items: [
-                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "08:00", title: "金許園", desc: "超人氣排隊北方麵點，現烙香脆韭菜盒與牛肉大餅。", tip: "剛起鍋煎得金黃焦脆的韭菜盒或牛肉大餅，用筷子夾開露出飽滿多汁內餡的剖面，視覺感滿分！", info: "周邊臨停格位有限，建議將車輛停放在附近寬闊路邊，步行約1-2分鐘即可抵達。" },
-                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "上午", title: "馬山觀測站 & 獅山砲陣地", desc: "探訪天下第一哨看對岸，觀賞震撼人心的八吋榴砲操演示。", tip: "在馬山觀測所坑道盡頭觀測窗，可用手機拉長焦段捕捉對岸哨所；獅山砲操發射瞬間，使用手機連拍功能效果最棒！", info: "兩處景點皆規劃有開闊且免費的公有大、小型車專屬停車場。" },
-                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "12:00", title: "新天地海產店", desc: "老字號海產店，鮮美炒石蚵與在地海產料理。", tip: "金門石蚵顆粒雖小但極扎實肥美，可以用筷子夾起數顆石蚵特寫，呈現滿滿的料多實在感。", info: "門前及周邊路邊可方便停放車輛。" },
-                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "14:00", title: "沙美摩洛哥 (沙美老街)", desc: "廢棄黃土頹屋群，充滿中東北非異國情調的爆紅打卡點。", tip: "利用午後陽光直射在黃色廢墟泥牆上的強烈陰影，人在土牆中庭拍照，宛如置身北非摩洛哥小鎮，極具神祕感。", info: "老街周邊設有公共停車場。此處也是買「沙美閩式燒餅」當作伴手禮的絕佳時機（#必買 推薦！）。" },
-                    { type: "活動", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "15:30", title: "愜意甜點工作室", desc: "閩南傳統古厝內的精緻法式甜點魂，為金門行畫下完美句點。", tip: "將法式現代精緻蛋糕放在閩南古厝的磚紅木桌上，反差萌視覺非常吸睛。用俯視角度拍下甜點塔，畫面高雅。", info: "老街巷弄內不可停車。請將愛車停在沙美車站或公共停車場，再步行漫步穿過古色古香的巷弄。" },
-                    { type: "交通", tag: "#必買", tagColor: "amber", typeColor: "blue", time: "18:20", title: "立榮航空 B7-8962", desc: "金門尚義 (KNH) 18:20 → 台中清泉崗 (RMQ) 19:20", tip: "機場免稅店是購買金門高粱酒、貢糖、牛肉乾與一條根的最終衝刺好機會！", info: "請於17:20前抵達金門尚義機場，先至外圍櫃檯辦理「還車手續」，隨後前往登機櫃檯託運行李與安檢。" }
+                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "08:00", title: "金許園", desc: "現烙香脆韭菜盒與牛肉大餅。", tip: "夾開露出飽滿多汁內餡的剖面，視覺感滿分！", info: "建議將車輛停放在附近寬闊路邊再步行。" },
+                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "上午", title: "馬山觀測站 & 獅山砲陣地", desc: "天下第一哨，看榴砲操演示。", tip: "觀測窗可用長焦段捕捉對岸；砲操發射瞬間用連拍功能！", info: "兩處皆規劃有開闊免費停車場。" },
+                    { type: "食物", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "12:00", title: "新天地海產店", desc: "炒石蚵與在地海產料理。", tip: "用筷子夾起數顆金門石蚵特寫，呈獻料多實在感。", info: "門前及周邊路邊可方便停放。" },
+                    { type: "景點", tag: "#必拍", tagColor: "purple", typeColor: "emerald", time: "14:00", title: "沙美摩洛哥", desc: "充滿北非異國情調的爆紅打卡頹屋群。", tip: "利用午後陽光直射在黃色泥牆的強烈陰影，人在土牆中庭拍出名模感。", info: "周邊設有公共停車場。可順便買閩式燒餅當伴手禮！" },
+                    { type: "活動", tag: "#必吃", tagColor: "orange", typeColor: "orange", time: "15:30", title: "愜意甜點工作室", desc: "閩南古厝內的法式甜點店。", tip: "現代法式甜點擺在紅磚木桌上的反差萌，由上往下拍最美。", info: "請將愛車停在沙美車站，再步行進老街巷弄。" },
+                    { type: "交通", tag: "#必買", tagColor: "amber", typeColor: "blue", time: "18:20", title: "立榮航空 B7-8962", desc: "金門尚義 (KNH) 18:20 → 台中清泉崗 (RMQ) 19:20", tip: "機場免稅店是高粱酒、貢糖、牛肉乾最後衝刺機會！", info: "17:20前抵達機場辦理還車手續與行李託運。" }
                 ]
             }
         ];
 
-        // 核心渲染函式：將資料轉換為 HTML 內容
+        const infoStatus = document.getElementById('cloud-status');
+        
+        // 監聽雲端行程
+        db.ref('kinmen_trip/itinerary').on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                travelData = snapshot.val();
+            } else {
+                travelData = defaultTravelData;
+                db.ref('kinmen_trip/itinerary').set(defaultTravelData);
+            }
+            renderItinerary();
+            infoStatus.innerHTML = `<i class="fa-solid fa-cloud-arrow-up mr-1"></i>雲端已同步`;
+            infoStatus.className = "bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-200";
+        });
+
+        // 監聽雲端開支
+        db.ref('kinmen_trip/expenses').on('value', (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                expenses = Object.keys(data).map(key => data[key]);
+            } else {
+                expenses = [];
+            }
+            renderExpenseList();
+            calculateSettlement();
+        });
+
         function renderItinerary() {
             const container = document.getElementById('itinerary-container');
             let htmlStr = "";
-
             travelData.forEach((dayData, dayIdx) => {
                 let itemsHtml = "";
-                
                 dayData.items.forEach((item, itemIdx) => {
-                    // 色彩樣式映射對照
-                    const badgeStyles = {
-                        blue: "bg-blue-50 text-[#3B7AAE]",
-                        orange: "bg-orange-50 text-orange-600",
-                        emerald: "bg-emerald-50 text-emerald-600",
-                        purple: "bg-purple-50 text-purple-600",
-                        amber: "bg-amber-50 text-amber-700"
-                    };
-
-                    const tColor = badgeStyles[item.typeColor] || "bg-gray-50 text-gray-600";
-                    const tagC = badgeStyles[item.tagColor] || "bg-gray-50 text-gray-600";
-
+                    const badgeStyles = { blue: "bg-blue-50 text-[#3B7AAE]", orange: "bg-orange-50 text-orange-600", emerald: "bg-emerald-50 text-emerald-600", purple: "bg-purple-50 text-purple-600", amber: "bg-amber-50 text-amber-700" };
                     itemsHtml += `
                         <div class="flex gap-3 relative group">
-                            <!-- 時間軸圖章 -->
                             <div class="z-10 w-14 h-14 bg-white border-2 border-[#3B7AAE] rounded-full flex flex-col items-center justify-center text-center shadow-sm shrink-0">
                                 <span class="text-[10px] text-gray-400 font-bold leading-none">${item.time}</span>
                                 <span class="text-xs font-bold text-[#3B7AAE] mt-0.5">${item.type.slice(0,2)}</span>
                             </div>
-                            
-                            <!-- 韓式行程卡片 -->
                             <div class="flex-1 bg-white p-4 korean-card space-y-2 relative">
-                                <!-- 編輯按鈕 -->
-                                <button onclick="openEditModal(${dayIdx}, ${itemIdx})" class="absolute top-3 right-3 text-xs bg-gray-50 hover:bg-blue-50 hover:text-[#3B7AAE] text-gray-400 px-2 py-1 rounded-lg transition-all flex items-center gap-1 border border-gray-100">
-                                    <i class="fa-solid fa-pen-to-square"></i>編輯
-                                </button>
-
-                                <div class="flex gap-1.5 items-center">
-                                    <span class="inline-block ${tColor} text-[11px] font-bold px-2 py-0.5 rounded-md">${item.type}</span>
-                                    <span class="text-[11px] ${tagC} px-2 py-0.5 rounded-full font-medium">${item.tag}</span>
-                                </div>
-                                
+                                <button onclick="openEditModal(${dayIdx}, ${itemIdx})" class="absolute top-3 right-3 text-xs bg-gray-50 text-gray-400 px-2 py-1 rounded-lg border border-gray-100"><i class="fa-solid fa-pen-to-square"></i>編輯</button>
+                                <div class="flex gap-1.5 items-center"><span class="inline-block ${badgeStyles[item.typeColor] || 'bg-gray-50'} text-[11px] font-bold px-2 py-0.5 rounded-md">${item.type}</span><span class="text-[11px] ${badgeStyles[item.tagColor] || 'bg-gray-50'} px-2 py-0.5 rounded-full font-medium">${item.tag}</span></div>
                                 <h3 class="font-bold text-gray-800 text-base pr-12">${item.title}</h3>
                                 <p class="text-xs text-gray-500">${item.desc}</p>
-                                
-                                <div class="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1.5 border border-gray-100/60 mt-1">
-                                    <div class="text-gray-600"><span class="font-bold text-[#3B7AAE]">💡 拍照技巧：</span>${item.tip}</div>
-                                    <div class="text-gray-500"><span class="font-bold text-gray-600">🚗 交通停車：</span>${item.info}</div>
+                                <div class="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1 mt-1">
+                                    <div class="text-gray-600"><span class="font-bold text-[#3B7AAE]">💡 拍照：</span>${item.tip}</div>
+                                    <div class="text-gray-500"><span class="font-bold text-gray-600">🚗 交通：</span>${item.info}</div>
                                 </div>
                             </div>
-                        </div>
-                    `;
+                        </div>`;
                 });
-
                 htmlStr += `
                     <section id="day${dayIdx + 1}" class="space-y-4 scroll-mt-20">
-                        <!-- Day 橫幅 -->
-                        <div class="bg-fuji-blue text-white p-5 rounded-[24px] shadow-lg shadow-blue-900/10 flex justify-between items-center relative overflow-hidden">
-                            <div class="absolute right-[-10px] bottom-[-20px] text-white/10 text-7xl font-black">${dayData.day.replace("ay ","")}</div>
-                            <div>
-                                <span class="bg-white/20 text-xs uppercase tracking-wider px-2 py-0.5 rounded font-bold">${dayData.day}</span>
-                                <h2 class="text-xl font-bold mt-1">${dayData.theme}</h2>
-                                <p class="text-xs text-blue-100 mt-0.5"><i class="fa-regular fa-calendar-days mr-1"></i> ${dayData.date}</p>
-                            </div>
+                        <div class="bg-fuji-blue text-white p-5 rounded-[24px] shadow-lg flex justify-between items-center relative overflow-hidden">
+                            <div class="absolute right-[-10px] bottom-[-20px] text-white/10 text-7xl font-black">${dayIdx+1}</div>
+                            <div><span class="bg-white/20 text-xs uppercase tracking-wider px-2 py-0.5 rounded font-bold">${dayData.day}</span><h2 class="text-xl font-bold mt-1">${dayData.theme}</h2><p class="text-xs text-blue-100 mt-0.5">${dayData.date}</p></div>
                             <i class="fa-solid ${dayData.icon} text-3xl text-blue-100/80"></i>
                         </div>
-
-                        <!-- 垂直時間軌跡線 -->
-                        <div class="space-y-4 relative before:absolute before:inset-0 before:left-[27px] before:w-0.5 before:bg-gray-200/60 before:py-4">
-                            ${itemsHtml}
+                        <div class="space-y-4 relative before:absolute before:inset-0 before:left-[27px] before:w-0.5 before:bg-gray-200/60 before:py-4">${itemsHtml}</div>
+                        <div class="bg-[#3B7AAE]/5 border border-[#3B7AAE]/10 rounded-2xl p-4 mt-2 grid grid-cols-2 gap-3 text-xs text-gray-600">
+                            <div class="bg-white p-2.5 rounded-xl border border-blue-100/40"><span class="font-bold block text-gray-800 mb-0.5">👗 建議穿著</span>${dayData.clothing}</div>
+                            <div class="bg-white p-2.5 rounded-xl border border-blue-100/40"><span class="font-bold block text-gray-800 mb-0.5">☀️ 天氣提示</span>${dayData.weather}</div>
                         </div>
-
-                        <!-- 建議穿著與天氣提示 -->
-                        <div class="bg-[#3B7AAE]/5 border border-[#3B7AAE]/10 rounded-2xl p-4 mt-2 space-y-2">
-                            <div class="flex items-center gap-2 text-sm font-bold text-[#3B7AAE]">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                                <span>${dayData.day} 導遊貼心小叮嚀</span>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3 text-xs text-gray-600 pt-1">
-                                <div class="bg-white p-2.5 rounded-xl border border-blue-100/40">
-                                    <span class="font-bold block text-gray-800 mb-0.5">👗 建議穿著</span>
-                                    ${dayData.clothing}
-                                </div>
-                                <div class="bg-white p-2.5 rounded-xl border border-blue-100/40">
-                                    <span class="font-bold block text-gray-800 mb-0.5">☀️ 天氣提示</span>
-                                    ${dayData.weather}
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                `;
+                    </section>`;
             });
-
             container.innerHTML = htmlStr;
         }
 
-        // 開啟編輯視窗並帶入既有數值
         function openEditModal(dayIdx, itemIdx) {
             const targetItem = travelData[dayIdx].items[itemIdx];
-            
             document.getElementById('edit-day-idx').value = dayIdx;
             document.getElementById('edit-item-idx').value = itemIdx;
-            
             document.getElementById('input-time').value = targetItem.time;
             document.getElementById('input-title').value = targetItem.title;
             document.getElementById('input-desc').value = targetItem.desc;
             document.getElementById('input-tip').value = targetItem.tip;
             document.getElementById('input-info').value = targetItem.info;
-
-            // 彈出動畫邏輯
-            const modal = document.getElementById('edit-modal');
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            modal.querySelector('div').classList.remove('translate-y-full');
+            showModalVisuals('edit-modal');
         }
 
-        // 關閉編輯視窗
-        function closeModal() {
-            const modal = document.getElementById('edit-modal');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            modal.querySelector('div').classList.add('translate-y-full');
-        }
-
-        // 儲存修改至狀態陣列中並重新繪製畫面
         function saveItineraryChanges() {
             const dayIdx = document.getElementById('edit-day-idx').value;
             const itemIdx = document.getElementById('edit-item-idx').value;
-
-            // 更新 JS 核心陣列資料
+            
             travelData[dayIdx].items[itemIdx].time = document.getElementById('input-time').value;
             travelData[dayIdx].items[itemIdx].title = document.getElementById('input-title').value;
             travelData[dayIdx].items[itemIdx].desc = document.getElementById('input-desc').value;
             travelData[dayIdx].items[itemIdx].tip = document.getElementById('input-tip').value;
             travelData[dayIdx].items[itemIdx].info = document.getElementById('input-info').value;
-
-            // 重新渲染畫面並關閉 Modal
-            renderItinerary();
-            closeModal();
+            
+            db.ref('kinmen_trip/itinerary').set(travelData);
+            closeModal('edit-modal');
         }
 
-        // 初始化網頁時首次加載資料
-        window.addEventListener('DOMContentLoaded', () => {
-            renderItinerary();
-        });
+        // 記帳與分帳功能
+        function openBudgetModal() {
+            setupBudgetModalForm();
+            renderExpenseList();
+            calculateSettlement();
+            showModalVisuals('budget-modal');
+        }
+
+        function setupBudgetModalForm() {
+            const payerContainer = document.getElementById('payer-radio-group');
+            const sharerContainer = document.getElementById('sharer-checkbox-group');
+            let p = "", s = "";
+            members.forEach((m, idx) => {
+                p += `<label class="flex items-center justify-center border border-gray-200 rounded-xl p-2 cursor-pointer bg-white text-xs has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 font-medium"><input type="radio" name="expense-payer" value="${m}" ${idx===0?'checked':''} class="hidden">${m}</label>`;
+                s += `<label class="flex items-center justify-center border border-gray-200 rounded-xl p-2 cursor-pointer bg-white text-xs has-[:checked]:bg-blue-50 has-[:checked]:border-blue-400 font-medium"><input type="checkbox" name="expense-sharers" value="${m}" checked class="hidden">${m}</label>`;
+            });
+            payerContainer.innerHTML = p;
+            sharerContainer.innerHTML = s;
+        }
+
+        function addExpenseRecord() {
+            const pInput = document.getElementById('expense-purpose');
+            const aInput = document.getElementById('expense-amount');
+            const purpose = pInput.value.trim();
+            const amount = parseFloat(aInput.value);
+
+            if (!purpose || isNaN(amount) || amount <= 0) { alert("請填寫正確的項目與金額唷！"); return; }
+            const payer = document.querySelector('input[name="expense-payer"]:checked').value;
+            let sharers = [];
+            document.querySelectorAll('input[name="expense-sharers"]:checked').forEach(cb => sharers.push(cb.value));
+            if (sharers.length === 0) { alert("至少需勾選一位分攤旅伴喔！"); return; }
+
+            const id = "exp_" + Date.now();
+            const newRecord = { id, purpose, amount, payer, sharers };
+            
+            db.ref('kinmen_trip/expenses/' + id).set(newRecord);
+            pInput.value = ""; aInput.value = "";
+        }
+
+        function renderExpenseList() {
+            const container = document.getElementById('expense-list-container');
+            let html = ""; let total = 0;
+            if (expenses.length === 0) {
+                container.innerHTML = `<div class="text-center text-xs text-gray-400 py-4">暫無雲端消費明細。</div>`;
+                document.getElementById('total-amount-display').innerText = `總計: $0`;
+                return;
+            }
+            expenses.forEach(exp => {
+                total += exp.amount;
+                html += `
+                    <div class="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl text-xs border border-gray-100">
+                        <div>
+                            <div class="font-bold text-gray-800">${exp.purpose}</div>
+                            <div class="text-gray-400"><span class="text-amber-600 font-medium">${exp.payer}</span> 墊 $${exp.amount}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-700">$${exp.amount}</span>
+                            <button onclick="deleteExpenseRecord('${exp.id}')" class="text-gray-300 hover:text-red-500 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+            document.getElementById('total-amount-display').innerText = `總計: $${total}`;
+        }
+
+        function deleteExpenseRecord(id) {
+            db.ref('kinmen_trip/expenses/' + id).set(null);
+        }
+
+        function calculateSettlement() {
+            const resultsDiv = document.getElementById('settlement-results');
+            let balances = {};
+            members.forEach(m => balances[m] = 0);
+
+            expenses.forEach(exp => {
+                balances[exp.payer] += exp.amount;
+                const perShare = exp.amount / exp.sharers.length;
+                exp.sharers.forEach(s => balances[s] -= perShare);
+            });
+
+            let debtors = [], creditors = [];
+            for (let name in balances) {
+                let bal = Math.round(balances[name] * 100) / 100;
+                if (bal < -0.1) debtors.push({ name, amount: Math.abs(bal) });
+                else if (bal > 0.1) creditors.push({ name, amount: bal });
+            }
+
+            let transferProtocols = [];
+            let dIdx = 0, cIdx = 0;
+            while (dIdx < debtors.length && cIdx < creditors.length) {
+                let debtor = debtors[dIdx]; let creditor = creditors[cIdx];
+                let settleAmount = Math.min(debtor.amount, creditor.amount);
+                if (settleAmount > 0.5) {
+                    transferProtocols.push({ from: debtor.name, to: creditor.name, value: Math.round(settleAmount) });
+                }
+                debtor.amount -= settleAmount; creditor.amount -= settleAmount;
+                if (debtor.amount < 0.5) dIdx++; if (creditor.amount < 0.5) cIdx++;
+            }
+
+            if (transferProtocols.length === 0) {
+                resultsDiv.innerHTML = `<span class="text-gray-400">目前雲端帳務平衡。</span>`;
+                globalSettlementText = "📣 金門漫遊分帳報告：目前帳務平衡，互不相欠！";
+                return;
+            }
+
+            let html = "";
+            let lineText = "🗺️【金門離島漫遊 雲端即時分帳通知】\n───────────────────\n";
+            transferProtocols.forEach(p => {
+                html += `<div class="flex items-center justify-between py-1 border-b border-dashed border-gray-100 last:border-0"><span>👤 <strong class="text-red-500">${p.from}</strong> 應轉帳給 <strong>${p.to}</strong></span><span class="font-bold text-[#3B7AAE]">$${p.value} 元</span></div>`;
+                lineText += ` 💸【${p.from}】 ➡️ 給 【${p.to}】 💲$${p.value} 元\n`;
+            });
+            lineText += "───────────────────\n請大家確認後匯款回報唷！🙏🏻";
+            resultsDiv.innerHTML = html;
+            globalSettlementText = lineText;
+        }
+
+        function copyToLineClipboard() {
+            navigator.clipboard.writeText(globalSettlementText).then(() => {
+                alert("✨ 雲端結算報告已複製！快貼到 LINE 群組通知旅伴吧！");
+            });
+        }
+
+        function showModalVisuals(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('translate-y-full');
+        }
+        
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.add('translate-y-full');
+        }
     </script>
 </body>
 </html>
